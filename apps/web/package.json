@@ -1,0 +1,13 @@
+{
+  "name": "stock-web",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev"
+  },
+  "dependencies": {
+    "astro": "^5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5"
+  }
+}

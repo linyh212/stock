@@ -1,0 +1,16 @@
+{
+  "name": "stock-api",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "fastify": "^4",
+    "@fastify/websocket": "^8",
+    "redis": "^4"
+  },
+  "devDependencies": {
+    "tsx": "^4",
+    "typescript": "^5"
+  }
+}
