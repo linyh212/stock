@@ -1,0 +1,9 @@
+cd backend/
+npm init -y
+npm i fastify @fastify/websocket ws
+npm i -D typescript ts-node @types/node
+
+cd frontend/
+npm i lightweight-charts
+npm install astro
+npm run build
