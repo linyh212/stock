@@ -8,3 +8,5 @@ cd frontend/
 npm i lightweight-charts
 npm install astro
 npm run build
+npm install react react-dom
+npm install @astrojs/react

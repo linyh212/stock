@@ -1,19 +1,30 @@
 import { useEffect, useState } from "react";
-import { ws } from "../ws";
+import { subscribe } from "../ws";
 
 export default function QuotePanel() {
-  const [quote, setQuote] = useState<any>(null);
+  const [data, setData] = useState<any>(null);
+
   useEffect(() => {
-    ws.onmessage = (event) => {
-      setQuote(JSON.parse(event.data));
-    };
+    subscribe(setData);
   }, []);
-  if (!quote) return <div>loading...</div>;
+
+  if (!data) return <div>Loading...</div>;
+
   return (
-    <div>
-      <h2>{quote.symbol}</h2>
-      <p>價格：{quote.price}</p>
-      <p>成交量：{quote.volume}</p>
+    <div style={{ padding: 16 }}>
+      <h2>2330 台積電</h2>
+
+      <div style={{ fontSize: 28 }}>
+        {data.price}
+      </div>
+
+      <div>
+        成交量：{data.volume}
+      </div>
+
+      <div>
+        時間：{new Date(data.time || Date.now()).toLocaleTimeString()}
+      </div>
     </div>
   );
 }

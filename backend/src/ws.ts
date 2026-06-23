@@ -1,44 +1,23 @@
-import type { FastifyInstance } from "fastify";
+import { SocketStream } from "@fastify/websocket";
 import { WebSocket } from "ws";
-import { createFugleWS } from "./fugleClient";
+import { WSMessage } from "./types";
 
-type Quote = {
-  symbol: string;
-  price: number;
-  volume: number;
-  time: number;
-};
+let clients: WebSocket[] = [];
 
-const clients = new Set<WebSocket>();
-
-export function registerWS(app: FastifyInstance) {
-  app.get("/ws", { websocket: true }, (connection) => {
-    const socket = connection.socket as WebSocket;
-    clients.add(socket);
-    console.log("[WS] client connected:", clients.size);
-    socket.on("message", (msg: Buffer) => {
-      console.log("[WS] recv:", msg.toString());
-    });
-    socket.on("close", () => {
-      clients.delete(socket);
-      console.log("[WS] client disconnected:", clients.size);
-    });
-    socket.on("error", (err: any) => {
-      console.log("[WS] error:", err);
-      clients.delete(socket);
-    });
+export function registerWS(connection: SocketStream) {
+  const socket = connection.socket;
+  clients.push(socket);
+  console.log("[WS] client connected");
+  socket.on("close", () => {
+    clients = clients.filter((c) => c !== socket);
   });
 }
 
-export function broadcastQuote(data: Quote) {
-  const payload = JSON.stringify(data);
-  for (const client of clients) {
-    try {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(payload);
-      }
-    } catch (err) {
-      clients.delete(client);
+export function broadcast(data: WSMessage) {
+  const msg = JSON.stringify(data);
+  clients.forEach((c) => {
+    if (c.readyState === 1) {
+      c.send(msg);
     }
-  }
+  });
 }

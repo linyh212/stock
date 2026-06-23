@@ -1,16 +1,9 @@
-<html>
-  <head>
-    <title>Stock MVP</title>
-  </head>
+---
+import Layout from "../components/Layout";
+---
 
-  <body>
-    <h1>Stock Dashboard</h1>
-    <div id="chart"></div>
-    <script type="module">
-      const ws = new WebSocket("ws://localhost:3000/ws");
-      ws.onmessage = (event) => {
-        console.log(JSON.parse(event.data));
-      };
-    </script>
+<html>
+  <body style="margin:0">
+    <Layout />
   </body>
 </html>

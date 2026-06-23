@@ -1,25 +1,39 @@
 import WebSocket from "ws";
-const URL = "wss://api.fugle.tw/marketdata/v1.0/stock/streaming";
+
+export interface FugleTickData {
+  symbol: string;
+  price: number;
+  volume: number;
+  time: number;
+}
 
 export function createFugleWS(
   symbol: string,
-  onTick: (data: any) => void
+  onTick: (tick: FugleTickData) => void
 ) {
-  const ws = new WebSocket(URL);
+  const token = process.env.FUGLE_API_TOKEN;
+  if (!token)
+    throw new Error("FUGLE_API_TOKEN missing");
+  const url = "wss://api.fugle.tw/marketdata/v1.0/stock/streaming";
+  console.log(`[FUGLE] Connecting: ${url}`);
+  const ws = new WebSocket(url);
+  let authed = false;
   ws.on("open", () => {
+    console.log("[FUGLE] connected");
     ws.send(
       JSON.stringify({
         event: "auth",
         data: {
-          apikey: process.env.FUGLE_API_KEY,
+          apikey: token,
         },
       })
     );
   });
-  ws.on("message", (raw) => {
+  ws.on("message", (raw: any) => {
     const msg = JSON.parse(raw.toString());
     console.log("[FUGLE RAW]", msg);
     if (msg.event === "authenticated") {
+      authed = true;
       ws.send(
         JSON.stringify({
           event: "subscribe",
@@ -30,15 +44,27 @@ export function createFugleWS(
         })
       );
     }
-    if ( msg.event === "snapshot" || msg.event === "data" ) {
-      onTick({
+    if (msg.event === "data" && msg.data) {
+      const tick: FugleTickData = {
         symbol: msg.data.symbol,
         price: msg.data.price,
         volume: msg.data.volume,
-        timestamp: msg.data.time,
-      });
+        time: msg.data.time,
+      };
+      onTick(tick);
     }
+    if (msg.event === "error")
+      console.error("[FUGLE API ERROR]", msg);
   });
-  ws.on("error", console.error);
+
+  ws.on("error", (err) => {
+    console.error("[FUGLE WS ERROR]", err.message);
+  });
+
+  ws.on("close", () => {
+    console.log("[FUGLE] disconnected, retrying...");
+    setTimeout(() => createFugleWS(symbol, onTick), 3000);
+  });
+
   return ws;
 }
