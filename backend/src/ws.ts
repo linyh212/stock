@@ -1,4 +1,6 @@
 import type { FastifyInstance } from "fastify";
+import { WebSocket } from "ws";
+import { createFugleWS } from "./fugleClient";
 
 type Quote = {
   symbol: string;
@@ -7,19 +9,23 @@ type Quote = {
   time: number;
 };
 
-let clients = new Set<any>();
+const clients = new Set<WebSocket>();
 
 export function registerWS(app: FastifyInstance) {
   app.get("/ws", { websocket: true }, (connection) => {
-    const socket = connection.socket;
+    const socket = connection.socket as WebSocket;
     clients.add(socket);
-    console.log("client connected:", clients.size);
-    socket.on("message", (msg: any) => {
-      console.log("recv:", msg.toString());
+    console.log("[WS] client connected:", clients.size);
+    socket.on("message", (msg: Buffer) => {
+      console.log("[WS] recv:", msg.toString());
     });
     socket.on("close", () => {
       clients.delete(socket);
-      console.log("client disconnected:", clients.size);
+      console.log("[WS] client disconnected:", clients.size);
+    });
+    socket.on("error", (err: any) => {
+      console.log("[WS] error:", err);
+      clients.delete(socket);
     });
   });
 }
@@ -27,21 +33,12 @@ export function registerWS(app: FastifyInstance) {
 export function broadcastQuote(data: Quote) {
   const payload = JSON.stringify(data);
   for (const client of clients) {
-    if (client.readyState === 1) {
-      client.send(payload);
+    try {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(payload);
+      }
+    } catch (err) {
+      clients.delete(client);
     }
   }
-}
-
-export function startMockFeed() {
-  let price = 1000;
-  setInterval(() => {
-    price += (Math.random() - 0.5) * 3;
-    broadcastQuote({
-      symbol: "2330",
-      price: Number(price.toFixed(2)),
-      volume: Math.floor(Math.random() * 10000),
-      time: Date.now(),
-    });
-  }, 1000);
 }

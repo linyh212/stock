@@ -1,15 +1,20 @@
-type BroadcastFunction = (data: unknown) => void;
+import { createFugleWS } from "./fugleClient";
 
-export function startCollector(broadcast: BroadcastFunction) {
-  let price = 1000;
-  setInterval(() => {
-    price += (Math.random() - 0.5) * 5;
-    const data = {
-      symbol: "2330",
-      price: Number(price.toFixed(2)),
-      volume: Math.floor(Math.random() * 1000),
+type PublishFn = (data: {
+  symbol: string;
+  price: number;
+  volume: number;
+  time: number;
+}) => void;
+
+export function startCollector(publish: PublishFn) {
+  createFugleWS("2330", (tick: any) => {
+    console.log("[FUGLE TICK]", tick);
+    publish({
+      symbol: tick.symbol,
+      price: tick.price,
+      volume: tick.volume,
       time: Date.now(),
-    };
-    broadcast(data);
-  }, 1000);
+    });
+  });
 }
