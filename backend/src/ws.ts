@@ -2,28 +2,29 @@ import { SocketStream } from "@fastify/websocket";
 import { WebSocket } from "ws";
 import { WSMessage } from "./types";
 
-let clients: WebSocket[] = [];
+const clients = new Set<WebSocket>();
 
 export function registerWS(connection: SocketStream) {
   const socket = connection.socket;
-  clients.push(socket);
-  console.log("[WS] client connected, total:", clients.length);
+  clients.add(socket);
+  console.log(
+    "[WS] client connected, total:",
+    clients.size
+  );
   socket.on("close", () => {
-    clients = clients.filter((c) => c !== socket);
-    console.log("[WS] client disconnected, total:", clients.length);
+    clients.delete(socket);
+    console.log(
+      "[WS] client disconnected, total:",
+      clients.size
+    );
   });
 }
 
 export function broadcast(data: WSMessage) {
   const msg = JSON.stringify(data);
-  clients.forEach((c) => {
-    if (c.readyState === 1) {
-      c.send(msg);
+  clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(msg);
     }
   });
-}
-
-export function addClient(ws: any) {
-  clients.push(ws);
-  console.log("[WS] client connected, total =", clients.length);
 }

@@ -3,6 +3,11 @@ import { updateKline } from "./klineBuilder";
 import { Tick } from "./types";
 import { broadcast } from "./ws";
 
+function normalizeTime(t: number): number {
+  if (t > 1e12) return Math.floor(t / 1000);
+  return t;
+}
+
 export function startCollector() {
   createFugleWS("2330", (tick: FugleTickData) => {
     console.log("[FUGLE TICK]", tick);
@@ -10,7 +15,7 @@ export function startCollector() {
       symbol: tick.symbol,
       price: tick.price,
       volume: tick.volume,
-      timestamp: Math.floor(tick.time / 1000),
+      timestamp: normalizeTime(tick.time),
     };
     handleTick(normalized);
   });
