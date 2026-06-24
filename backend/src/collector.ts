@@ -3,9 +3,13 @@ import { updateKline } from "./klineBuilder";
 import { Tick } from "./types";
 import { broadcast } from "./ws";
 
+const latestTicks = new Map<string, Tick>();
+
 function normalizeTime(t: number): number {
-  if (t > 1e12) return Math.floor(t / 1000);
-  return t;
+  if (t > 1e17) return Math.floor(t / 1_000_000);
+  if (t > 1e14) return Math.floor(t / 1_000);
+  if (t > 1e11) return Math.floor(t);
+  return Math.floor(t * 1000);
 }
 
 export function startCollector() {
@@ -22,6 +26,7 @@ export function startCollector() {
 }
 
 export function handleTick(tick: Tick) {
+  latestTicks.set(tick.symbol, tick);
   const candle = updateKline(tick);
   broadcast({
     type: "tick",
@@ -34,4 +39,8 @@ export function handleTick(tick: Tick) {
       time: Math.floor(candle.time / 1000),
     },
   });
+}
+
+export function getLatestTick(symbol: string) {
+  return latestTicks.get(symbol) || null;
 }

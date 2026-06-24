@@ -1,9 +1,20 @@
 ---
 import Layout from "../components/Layout";
+import QuotePanel from "../components/QuotePanel";
+import MarketBar from "../components/MarketBar";
+import KlineChart from "../components/KlineChart";
+import WSBoot from "../components/WSBoot";
 ---
 
-<html>
-  <body style="margin:0">
-    <Layout />
-  </body>
-</html>
+<Layout>
+  <WSBoot client:load />
+
+  <div class="sidebar">
+    <QuotePanel client:load />
+    <MarketBar client:load />
+  </div>
+
+  <div class="main">
+    <KlineChart client:load />
+  </div>
+</Layout>

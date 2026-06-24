@@ -44,11 +44,11 @@ export function createFugleWS(
         })
       );
     }
-    if (msg.event === "data" && msg.data) {
+    if ((msg.event === "data" || msg.event === "snapshot") && msg.data) {
       const tick: FugleTickData = {
         symbol: msg.data.symbol,
         price: msg.data.price,
-        volume: msg.data.volume,
+        volume: msg.data.size ?? msg.data.volume ?? 0,
         time: msg.data.time,
       };
       onTick(tick);
@@ -56,15 +56,12 @@ export function createFugleWS(
     if (msg.event === "error")
       console.error("[FUGLE API ERROR]", msg);
   });
-
   ws.on("error", (err) => {
     console.error("[FUGLE WS ERROR]", err.message);
   });
-
   ws.on("close", () => {
     console.log("[FUGLE] disconnected, retrying...");
     setTimeout(() => createFugleWS(symbol, onTick), 3000);
   });
-
   return ws;
 }

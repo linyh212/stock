@@ -27,13 +27,6 @@ export type Candle = {
   volume: number;
 };
 
-export interface QuoteResponse {
-  symbol: Symbol;
-  price: number;
-  change: number;
-  volume: number;
-}
-
 export type WSMessage =
   | {
       type: "quote";
@@ -50,17 +43,3 @@ export type WSMessage =
   | {
       type: "ping";
     };
-
-export interface Indicator {
-  ma5?: number;
-  ma10?: number;
-  ma20?: number;
-  rsi?: number;
-  macd?: number;
-}
-
-export interface StockInfo {
-  symbol: Symbol;
-  name: string;
-  market: "TW" | "US";
-}

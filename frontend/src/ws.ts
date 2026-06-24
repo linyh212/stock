@@ -1,26 +1,52 @@
-let ws: WebSocket;
-const listeners: ((data: any) => void)[] = [];
+import { getWsUrl } from "./config";
+import type { WSMessage } from "./types";
+
+type SubscribableType = Exclude<WSMessage["type"], "ping">;
+type MessageData<T extends SubscribableType> = Extract<
+  WSMessage,
+  { type: T }
+>["data"];
+
+const listeners = new Map<SubscribableType, ((data: any) => void)[]>();
+let ws: WebSocket | null = null;
 
 export function connectWS() {
-  const url = window.location.hostname === "localhost"? "ws://localhost:3000/ws" : `ws://${window.location.host}/ws`;
-  ws = new WebSocket(url);
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+  const wsUrl = getWsUrl();
+  console.log(`Connecting to WebSocket at ${wsUrl}...`);
+  ws = new WebSocket(wsUrl);
   ws.onopen = () => {
-    console.log("WS CONNECTED");
+    console.log("WebSocket connected");
   };
   ws.onmessage = (event) => {
     try {
-      const data = JSON.parse(event.data);
-      listeners.forEach((cb) => cb(data));
-    } catch (e) {
-      console.error("WS parse error:", e);
+      const message: WSMessage = JSON.parse(event.data);
+      if (message.type === "ping") return;
+      listeners
+        .get(message.type)
+        ?.forEach((callback) => callback(message.data));
+    } catch (error) {
+      console.error("Error parsing or handling WebSocket message:", error);
     }
   };
   ws.onclose = () => {
-    console.log("WS DISCONNECTED, retrying...");
-    setTimeout(connectWS, 2000);
+    console.log("WebSocket disconnected. Reconnecting in 1 second...");
+    ws = null;
+    setTimeout(connectWS, 1000);
+  };
+  ws.onerror = (error) => {
+    console.error("WebSocket error:", error);
+    ws?.close();
   };
 }
 
-export function subscribe(cb: (data: any) => void) {
-  listeners.push(cb);
+export function subscribe<T extends SubscribableType>(type: T, callback: (data: MessageData<T>) => void,): () => void {
+  if (!listeners.has(type)) listeners.set(type, []);
+  listeners.get(type)!.push(callback);
+  return () => {
+    const typeListeners = listeners.get(type);
+    if (!typeListeners) return;
+    const index = typeListeners.indexOf(callback);
+    if (index > -1) typeListeners.splice(index, 1);
+  };
 }
