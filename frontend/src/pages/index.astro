@@ -8,13 +8,41 @@ import WSBoot from "../components/WSBoot";
 
 <Layout>
   <WSBoot client:load />
-
-  <div class="sidebar">
-    <QuotePanel client:load />
-    <MarketBar client:load />
-  </div>
-
-  <div class="main">
-    <KlineChart client:load />
+  <div class="app">
+    <aside class="sidebar">
+      <QuotePanel client:load />
+      <MarketBar client:load />
+    </aside>
+    <section class="main">
+      <KlineChart client:load />
+    </section>
   </div>
 </Layout>
+
+<style>
+  .app {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    min-height: 100vh;
+  }
+  .sidebar {
+    border-right: 1px solid #1f2937;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  .main {
+    padding: 20px;
+  }
+
+  @media (max-width: 900px) {
+    .app {
+      grid-template-columns: 1fr;
+    }
+    .sidebar {
+      border-right: none;
+      border-bottom: 1px solid #1f2937;
+    }
+  }
+</style>

@@ -1,59 +1,75 @@
-import { createChart } from "lightweight-charts";
+import {
+  createChart,
+  CandlestickSeries,
+  type CandlestickData,
+  type Time,
+  type IChartApi,
+  type ISeriesApi,
+} from "lightweight-charts";
 import { useEffect, useRef } from "react";
 import { getApiUrl } from "../config";
 import { subscribe } from "../ws";
+import type { Candle } from "../types";
+
+const normalizeCandle = (candle: Candle): CandlestickData<Time> => ({
+  time: Math.floor(candle.time / 1000) as Time,
+  open: Number(candle.open),
+  high: Number(candle.high),
+  low: Number(candle.low),
+  close: Number(candle.close),
+});
 
 export default function KlineChart() {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!ref.current) return;
-    const chart = createChart(ref.current, {
-      width: ref.current.clientWidth,
-      height: 600,
+    const container = ref.current;
+    const chart: IChartApi = createChart(container, {
+      width: container.clientWidth,
+      height: 700,
       layout: {
-        background: {
-          color: "#0b0f14",
-        },
-        textColor: "#ffffff",
+        background: { color: "#0b0f14" },
+        textColor: "#9ca3af",
       },
       grid: {
-        vertLines: {
-          color: "#1f2937",
-        },
-        horzLines: {
-          color: "#1f2937",
-        },
+        vertLines: { color: "#111827" },
+        horzLines: { color: "#111827" },
+      },
+      rightPriceScale: {
+        borderVisible: false,
+      },
+      timeScale: {
+        borderVisible: false,
+      },
+      crosshair: {
+        mode: 1,
       },
     });
-    const candleSeries = chart.addCandlestickSeries();
+    const candleSeries: ISeriesApi<"Candlestick"> = chart.addSeries(CandlestickSeries);
     const loadHistory = async () => {
       try {
         const response = await fetch(getApiUrl("/api/kline/2330"));
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data: Candle[] = await response.json();
         if (Array.isArray(data)) {
-          candleSeries.setData(data);
+          const normalized = data
+            .filter((d) => d && d.time)
+            .map(normalizeCandle);
+          candleSeries.setData(normalized);
         }
-      } catch (error) {
-        console.error("Failed to load kline history:", error);
+      } catch (err) {
+        console.error("loadHistory error:", err);
       }
     };
     loadHistory();
-    const unsubscribe = subscribe("candle", (candle) => {
-      candleSeries.update({
-        time: candle.time,
-        open: candle.open,
-        high: candle.high,
-        low: candle.low,
-        close: candle.close,
-      });
+    const unsubscribe = subscribe("candle", (candle: Candle) => {
+      if (!candle?.time) return;
+      candleSeries.update(normalizeCandle(candle));
     });
     const resize = () => {
+      if (!ref.current) return;
       chart.applyOptions({
-        width: ref.current?.clientWidth,
+        width: ref.current.clientWidth,
       });
     };
     window.addEventListener("resize", resize);
@@ -68,7 +84,7 @@ export default function KlineChart() {
       ref={ref}
       style={{
         width: "100%",
-        height: "600px",
+        height: "700px",
       }}
     />
   );

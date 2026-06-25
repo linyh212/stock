@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { getApiUrl } from "../config";
 import { subscribe } from "../ws";
+import type { Tick } from "../types";
 
 export default function MarketBar() {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<Tick | null>(null);
   useEffect(() => {
     let active = true;
     const loadInitial = async () => {

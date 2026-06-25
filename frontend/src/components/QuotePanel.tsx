@@ -8,46 +8,53 @@ export default function QuotePanel() {
   const [candle, setCandle] = useState<Candle | null>(null);
   useEffect(() => {
     let active = true;
-
     const loadInitial = async () => {
       try {
         const [quoteResponse, klineResponse] = await Promise.all([
           fetch(getApiUrl("/api/quote/2330")),
           fetch(getApiUrl("/api/kline/2330")),
         ]);
-
-        if (active && quoteResponse.ok) {
+        if (active && quoteResponse.ok)
           setTick(await quoteResponse.json());
-        }
-
         if (active && klineResponse.ok) {
           const candles = await klineResponse.json();
-          if (Array.isArray(candles) && candles.length > 0) {
+          if (Array.isArray(candles) && candles.length > 0)
             setCandle(candles[candles.length - 1]);
-          }
         }
       } catch (error) {
-        console.error("Failed to load initial quote:", error);
+        console.error(error);
       }
     };
-
     loadInitial();
-
     const unsubscribeTick = subscribe("tick", setTick);
     const unsubscribeCandle = subscribe("candle", setCandle);
-
     return () => {
       active = false;
       unsubscribeTick();
       unsubscribeCandle();
     };
   }, []);
-  if (!tick) return <div>Loading...</div>;
+  if (!tick)
+    return <div>Loading...</div>;
+  const change = candle && candle.open ? Number((tick.price - candle.open).toFixed(2)) : 0;
+  const changePercent = candle && candle.open ? Number(((change / candle.open) * 100).toFixed(2)) : 0;
+  const positive = change >= 0;
   return (
-    <div className="quote-card">
+    <div className="quote-panel">
       <div className="symbol">TSMC</div>
       <div className="ticker">2330</div>
       <div className="price">{tick.price}</div>
+      <div
+        className="change"
+        style={{
+          color: positive ? "#22c55e" : "#ef4444",
+        }}
+      >
+        {positive ? "▲" : "▼"} {Math.abs(change)}
+        {" ("}
+        {Math.abs(changePercent)}%
+        {")"}
+      </div>
       <div className="time">
         {new Date(tick.timestamp).toLocaleTimeString()}
       </div>
@@ -55,58 +62,91 @@ export default function QuotePanel() {
         <div className="stats">
           <div>
             <span>Open</span>
-            <span>{candle.open}</span>
+            <strong>{candle.open}</strong>
           </div>
+
           <div>
             <span>High</span>
-            <span>{candle.high}</span>
+            <strong>{candle.high}</strong>
           </div>
+
           <div>
             <span>Low</span>
-            <span>{candle.low}</span>
+            <strong>{candle.low}</strong>
           </div>
+
           <div>
             <span>Close</span>
-            <span>{candle.close}</span>
+            <strong>{candle.close}</strong>
           </div>
+
           <div>
             <span>Volume</span>
-            <span>{candle.volume}</span>
+            <strong>
+              {Number(candle.volume).toLocaleString()}
+            </strong>
           </div>
         </div>
       )}
+
       <style jsx>{`
-        .quote-card {
-          padding: 32px;
-          background: #111827;
-          border-radius: 16px;
+        .quote-panel {
           color: white;
+          padding: 24px;
         }
+
         .symbol {
-          font-size: 14px;
-          color: #9ca3af;
+          font-size: 13px;
+          color: #6b7280;
+          text-transform: uppercase;
+          letter-spacing: 1px;
         }
+
         .ticker {
-          font-size: 18px;
-          margin-bottom: 8px;
+          font-size: 22px;
+          font-weight: 600;
+          margin-top: 4px;
         }
+
         .price {
-          font-size: 64px;
+          font-size: 84px;
+          line-height: 1;
           font-weight: 700;
+          margin-top: 16px;
         }
+
+        .change {
+          margin-top: 12px;
+          font-size: 18px;
+          font-weight: 600;
+        }
+
         .time {
-          color: #9ca3af;
           margin-top: 8px;
+          color: #6b7280;
+          font-size: 14px;
         }
+
         .stats {
-          margin-top: 24px;
+          margin-top: 32px;
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 12px;
+          gap: 14px;
         }
+
         .stats div {
           display: flex;
           justify-content: space-between;
+          padding: 10px 0;
+          border-bottom: 1px solid #1f2937;
+        }
+
+        .stats span {
+          color: #9ca3af;
+        }
+
+        .stats strong {
+          color: white;
         }
       `}</style>
     </div>

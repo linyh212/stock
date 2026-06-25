@@ -1,16 +1,13 @@
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <div
+    <main
       style={{
-        display: "grid",
-        gridTemplateColumns: "300px 1fr",
-        height: "100vh",
+        minHeight: "100vh",
         background: "#0b0f14",
-        color: "white",
+        color: "#fff",
       }}
     >
-      {/* 左側 */}
-      <div style={{ borderRight: "1px solid #222" }}>{children}</div>
-    </div>
+      {children}
+    </main>
   );
 }
