@@ -1,21 +1,30 @@
 import { useEffect, useState } from "react";
 import { getApiUrl } from "../config";
-import { subscribe } from "../ws";
-import type { Tick, Candle } from "../types";
+import { connectWS, subscribe } from "../ws";
+import type { Tick, Candle, Quote } from "../types";
 
 export default function QuotePanel() {
   const [tick, setTick] = useState<Tick | null>(null);
   const [candle, setCandle] = useState<Candle | null>(null);
   useEffect(() => {
     let active = true;
-    const loadInitial = async () => {
+    const handleQuote = (quote: Quote) => {
+      if (!active) return;
+      setTick((prev) => ({
+        ...(prev ?? { volume: 0, symbol: quote.symbol }),
+        price: quote.price,
+        volume: quote.volume,
+        timestamp: quote.time,
+      }));
+    };
+    const loadSnapshot = async () => {
       try {
         const [quoteResponse, klineResponse] = await Promise.all([
-          fetch(getApiUrl("/api/quote/2330")),
-          fetch(getApiUrl("/api/kline/2330")),
+          fetch(getApiUrl("/api/quote")),
+          fetch(getApiUrl("/api/kline")),
         ]);
         if (active && quoteResponse.ok)
-          setTick(await quoteResponse.json());
+          handleQuote(await quoteResponse.json());
         if (active && klineResponse.ok) {
           const candles = await klineResponse.json();
           if (Array.isArray(candles) && candles.length > 0)
@@ -25,13 +34,24 @@ export default function QuotePanel() {
         console.error(error);
       }
     };
-    loadInitial();
-    const unsubscribeTick = subscribe("tick", setTick);
+    loadSnapshot();
+    const refreshTimer = window.setInterval(loadSnapshot, 1000);
+    const handleTick = (nextTick: Tick) => {
+      if (!active) return;
+      setTick((prev) => ({
+        ...nextTick,
+        volume: prev?.volume ?? nextTick.volume,
+      }));
+    };
+    const unsubscribeTick = subscribe("tick", handleTick);
     const unsubscribeCandle = subscribe("candle", setCandle);
+    const unsubscribeQuote = subscribe("quote", handleQuote);
     return () => {
       active = false;
+      window.clearInterval(refreshTimer);
       unsubscribeTick();
       unsubscribeCandle();
+      unsubscribeQuote();
     };
   }, []);
   if (!tick)

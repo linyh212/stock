@@ -1,9 +1,9 @@
 import dotenv from "dotenv";
 import Fastify, { FastifyReply, FastifyRequest } from "fastify";
 import websocket from "@fastify/websocket";
-import { getLatestTick, startCollector } from "./collector";
+import { getDailyInfo, getLatestOrderBook, getLatestTick, startCollector, } from "./collector";
 import { registerWS } from "./ws";
-import { getCandles } from "./klineBuilder";
+import { getCandles, serializeCandle } from "./klineBuilder";
 
 dotenv.config();
 
@@ -32,35 +32,29 @@ app.get("/", async () => {
   return { ok: true };
 });
 
-app.get(
-  "/api/quote/:symbol",
-  (
-    req: FastifyRequest<{ Params: { symbol: string } }>,
-    reply: FastifyReply,
-  ) => {
-    const tick = getLatestTick(req.params.symbol);
-    if (!tick) {
-      return reply.code(404).send({ error: "quote not ready" });
-    }
+app.get("/api/quote", (req: FastifyRequest, reply: FastifyReply) => {
+  const tick = getLatestTick();
+  if (!tick)
+    return reply.code(404).send({ error: "quote not ready" });
+  const info = getDailyInfo();
+  return {
+    symbol: tick.symbol,
+    price: tick.price,
+    volume: info.volume,
+    time: Date.now(),
+  };
+});
 
-    return tick;
-  },
-);
-
-app.get(
-  "/api/kline/:symbol",
-  async (req: FastifyRequest<{ Params: { symbol: string } }>) => {
-    const { symbol } = req.params;
-    return getCandles(symbol).map((c) => ({
-      time: c.time / 1000,
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-      volume: c.volume,
-    }));
-  },
-);
+app.get("/api/kline", async (req: FastifyRequest) => {
+  const candles = getCandles();
+  const info = getDailyInfo();
+  return candles.map((candle, index) =>
+    serializeCandle(
+      candle,
+      index === candles.length - 1 && info ? info.volume : candle.volume,
+    ),
+  );
+});
 
 const start = async () => {
   try {

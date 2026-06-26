@@ -1,6 +1,6 @@
 import { Candle, Tick } from "./types";
-const candlesBySymbol = new Map<string, Candle[]>();
-const MAX_CANDLES_PER_SYMBOL = 400;
+const candles: Candle[] = [];
+const MAX_CANDLES = 400;
 
 function minuteBucket(ts: number) {
   return Math.floor(ts / 60000) * 60000;
@@ -8,15 +8,7 @@ function minuteBucket(ts: number) {
 
 export function updateKline(tick: Tick): Candle {
   const bucket = minuteBucket(tick.timestamp);
-  let symbolCandles = candlesBySymbol.get(tick.symbol);
-  if (!symbolCandles) {
-    symbolCandles = [];
-    candlesBySymbol.set(tick.symbol, symbolCandles);
-  }
-  let candle =
-    symbolCandles.length > 0
-      ? symbolCandles[symbolCandles.length - 1]
-      : undefined;
+  let candle = candles.length > 0 ? candles[candles.length - 1] : undefined;
   if (!candle || candle.time !== bucket) {
     candle = {
       symbol: tick.symbol,
@@ -28,10 +20,9 @@ export function updateKline(tick: Tick): Candle {
       close: tick.price,
       volume: tick.volume,
     };
-    symbolCandles.push(candle);
-    if (symbolCandles.length > MAX_CANDLES_PER_SYMBOL) {
-      symbolCandles.splice(0, symbolCandles.length - MAX_CANDLES_PER_SYMBOL);
-    }
+    candles.push(candle);
+    if (candles.length > MAX_CANDLES)
+      candles.splice(0, candles.length - MAX_CANDLES);
   } else {
     candle.high = Math.max(candle.high, tick.price);
     candle.low = Math.min(candle.low, tick.price);
@@ -41,7 +32,26 @@ export function updateKline(tick: Tick): Candle {
   return candle;
 }
 
-export function getCandles(symbol: string) {
-  const symbolCandles = candlesBySymbol.get(symbol) || [];
-  return symbolCandles.slice(-300);
+export function updateCandlePrice(price: number): Candle | null {
+  if (candles.length === 0) return null;
+  const candle = candles[candles.length - 1];
+  candle.high = Math.max(candle.high, price);
+  candle.low = Math.min(candle.low, price);
+  candle.close = price;
+  return candle;
+}
+
+export function getCandles() {
+  return candles.slice(-300);
+}
+
+export function serializeCandle(
+  candle: Candle,
+  volume = candle.volume,
+): Candle {
+  return {
+    ...candle,
+    time: Math.floor(candle.time / 1000),
+    volume,
+  };
 }

@@ -1,10 +1,24 @@
 import { createFugleWS, FugleTickData } from "./fugleClient";
-import { updateKline } from "./klineBuilder";
-import { Tick } from "./types";
+import { serializeCandle, updateKline, updateCandlePrice } from "./klineBuilder";
+import { OrderBook, Quote, Tick } from "./types";
 import { broadcast } from "./ws";
 
-const latestTicks = new Map<string, Tick>();
+let latestTick: Tick | null = null;
+let latestOrderBook: OrderBook | null = null;
+let dailyInfo: { volume: number; day: string } | null = null;
 
+const SYMBOL = "2330";
+
+function getTodayDayString() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export function getDailyInfo() {
+  const today = getTodayDayString();
+  if (!dailyInfo || dailyInfo.day !== today)
+    dailyInfo = { volume: 0, day: today };
+  return dailyInfo;
+}
 function normalizeTime(t: number): number {
   if (t > 1e17) return Math.floor(t / 1_000_000);
   if (t > 1e14) return Math.floor(t / 1_000);
@@ -13,7 +27,7 @@ function normalizeTime(t: number): number {
 }
 
 export function startCollector() {
-  createFugleWS("2330", (tick: FugleTickData) => {
+  createFugleWS(SYMBOL, (tick: FugleTickData) => {
     console.log("[FUGLE TICK]", tick);
     const normalized: Tick = {
       symbol: tick.symbol,
@@ -23,10 +37,32 @@ export function startCollector() {
     };
     handleTick(normalized);
   });
+  setInterval(() => {
+    const tick = getLatestTick();
+    if (tick) {
+      const info = getDailyInfo();
+      const quote: Quote = {
+        symbol: tick.symbol,
+        price: tick.price,
+        volume: info.volume,
+        time: Date.now(),
+      };
+      broadcast({ type: "quote", data: quote });
+      const candle = updateCandlePrice(tick.price);
+      if (candle) {
+        broadcast({
+          type: "candle",
+          data: serializeCandle(candle, info.volume),
+        });
+      }
+    }
+  }, 1000);
 }
 
 export function handleTick(tick: Tick) {
-  latestTicks.set(tick.symbol, tick);
+  const info = getDailyInfo();
+  info.volume += tick.volume;
+  latestTick = tick;
   const candle = updateKline(tick);
   broadcast({
     type: "tick",
@@ -34,13 +70,14 @@ export function handleTick(tick: Tick) {
   });
   broadcast({
     type: "candle",
-    data: {
-      ...candle,
-      time: Math.floor(candle.time / 1000),
-    },
+    data: serializeCandle(candle, info.volume),
   });
 }
 
-export function getLatestTick(symbol: string) {
-  return latestTicks.get(symbol) || null;
+export function getLatestTick() {
+  return latestTick;
+}
+
+export function getLatestOrderBook(): OrderBook | null {
+  return latestOrderBook;
 }

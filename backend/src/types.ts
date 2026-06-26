@@ -14,6 +14,12 @@ export type Tick = {
   price: number;
   volume: number;
   timestamp: number;
+  isBuy?: boolean;
+};
+
+export type BidAsk = {
+  price: number;
+  size: number;
 };
 
 export type Candle = {
@@ -26,6 +32,13 @@ export type Candle = {
   close: number;
   volume: number;
 };
+
+export interface OrderBook {
+  symbol: Symbol;
+  bids: BidAsk[];
+  asks: BidAsk[];
+  time: number;
+}
 
 export interface QuoteResponse {
   symbol: Symbol;
@@ -46,6 +59,10 @@ export type WSMessage =
   | {
       type: "candle";
       data: Candle;
+    }
+  | {
+      type: "orderbook";
+      data: OrderBook;
     }
   | {
       type: "ping";
